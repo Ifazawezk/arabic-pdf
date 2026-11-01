@@ -1,20 +1,24 @@
-"""Command line interface: ``arpdf file.pdf -o out.txt``."""
+"""Command line interface: ``arpdf file.pdf -o out.md``."""
 
 from __future__ import annotations
 
 import argparse
 import sys
 
-from .extract import extract_text
+from .extract import extract
+from .render import to_markdown, to_text
+
+FORMATS = {"text": to_text, "markdown": to_markdown}
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="arpdf", description="Extract clean text from Arabic PDFs.")
     parser.add_argument("pdf", help="input PDF file")
     parser.add_argument("-o", "--output", help="output file (default: stdout)")
+    parser.add_argument("-f", "--format", choices=sorted(FORMATS), default="text")
     args = parser.parse_args(argv)
 
-    text = extract_text(args.pdf)
+    text = FORMATS[args.format](extract(args.pdf))
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fh:
             fh.write(text + "\n")
