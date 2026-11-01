@@ -392,7 +392,9 @@ def main():
         manifest[doc_id] = build(doc_id, spec, browser)
         size = (OUT / f"{doc_id}.pdf").stat().st_size
         print(f"{doc_id:32s} {manifest[doc_id]['pages']} page(s) {size / 1024:7.1f} KB")
+    # documents added by hand (real PDFs in test cases) have no entry in DOCUMENTS
     entries = [manifest[k] for k in DOCUMENTS if k in manifest]
+    entries += [entry for key, entry in manifest.items() if key not in DOCUMENTS]
     manifest_path.write_text(json.dumps(entries, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
