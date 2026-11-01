@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import statistics
 import warnings
 from pathlib import Path
 
@@ -77,6 +78,30 @@ def needs_ocr(page: pymupdf.Page, glyphs: list[Glyph]) -> bool:
     return covered / area >= MIN_IMAGE_COVER
 
 
+def _line_glyphs(line: dict, previous: list[tuple]) -> list[Glyph]:
+    """Glyphs of one OCR line, all on one baseline.
+
+    The line structure from Tesseract is kept, because the boxes can't be
+    trusted on their own: two lines set close together can come back with the
+    same vertical range, and clustering their characters by position would
+    weave them into one line. Such a line is moved down to where it belongs.
+    """
+    chars = [(c, s["size"]) for s in line["spans"] for c in s["chars"] if c["c"].strip()]
+    if not chars:
+        return []
+    baseline = max(c["bbox"][3] for c, _ in chars)
+    size = statistics.median(s for _, s in chars)
+    x0, x1 = min(c["bbox"][0] for c, _ in chars), max(c["bbox"][2] for c, _ in chars)
+    for other_x0, other_x1, other_baseline, other_size in previous:
+        same_height = abs(baseline - other_baseline) < 0.6 * min(size, other_size)
+        overlap = min(x1, other_x1) - max(x0, other_x0)
+        if same_height and overlap > 0.25 * min(x1 - x0, other_x1 - other_x0):
+            baseline = other_baseline + 1.3 * max(size, other_size)
+    previous.append((x0, x1, baseline, size))
+    return [Glyph(c["c"], c["bbox"][0], baseline - size, c["bbox"][2], baseline + 0.25 * size, baseline, size)
+            for c, _ in chars]
+
+
 def ocr_glyphs(page: pymupdf.Page, language: str = DEFAULT_LANGUAGE, dpi: int = DEFAULT_DPI) -> list[Glyph] | None:
     """Run OCR on a page and return glyphs, or None if language data is missing.
 
@@ -89,12 +114,9 @@ def ocr_glyphs(page: pymupdf.Page, language: str = DEFAULT_LANGUAGE, dpi: int = 
         warnings.warn(f"no Tesseract data for {language}, see the OCR section of the README", stacklevel=2)
         return None
     textpage = page.get_textpage_ocr(language=languages, dpi=dpi, full=True, tessdata=tessdata)
-    glyphs = []
+    glyphs: list[Glyph] = []
+    placed: list[tuple] = []
     for block in page.get_text("rawdict", textpage=textpage)["blocks"]:
         for line in block.get("lines", ()):
-            for span in line["spans"]:
-                for char in span["chars"]:
-                    if char["c"].strip():
-                        x0, y0, x1, y1 = char["bbox"]
-                        glyphs.append(Glyph(char["c"], x0, y0, x1, y1, y1, span["size"]))
+            glyphs += _line_glyphs(line, placed)
     return glyphs

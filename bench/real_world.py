@@ -47,8 +47,8 @@ SOURCES = {
     },
 }
 
-_PRESENTATION = re.compile("[ﭐ-﷿ﹰ-ﻼ]")
-_ARABIC_WORD = re.compile("[ء-ي]{3,}")
+_PRESENTATION = re.compile("[\ufb50-\ufdff\ufe70-\ufefc]")
+_ARABIC_WORD = re.compile("[\u0621-\u064a]{3,}")
 
 
 def fetch(name: str, url: str) -> Path:
@@ -74,8 +74,8 @@ def reversed_share(text: str) -> float:
     balance between the two patterns shows the direction with no ground truth.
     """
     words = _ARABIC_WORD.findall(text)
-    forward = sum(w.startswith("ال") for w in words)
-    backward = sum(w.endswith("لا") for w in words)
+    forward = sum(w.startswith("\u0627\u0644") for w in words)
+    backward = sum(w.endswith("\u0644\u0627") for w in words)
     return backward / (forward + backward) if forward + backward else 0.0
 
 

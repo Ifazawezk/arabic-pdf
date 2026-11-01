@@ -305,6 +305,8 @@ def remove_running_text(pages: list[list[Line]], heights: list[float]) -> list[l
     running = {key for key, count in seen.items() if count >= needed}
 
     def is_running(line: Line, height: float) -> bool:
+        if line.table is not None:
+            return False
         sig = line_signature(line.text)
         if line.y1 <= MARGIN_BAND * height:
             return ("top", sig) in running

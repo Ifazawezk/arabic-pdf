@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from .glyphs import Glyph
+from .glyphs import Glyph, rotate_rect
 from .layout import Line, build_rows, is_rtl, line_text
 
 Rect = tuple[float, float, float, float]
@@ -37,6 +37,20 @@ def find_grids(page: pymupdf.Page) -> list[TableGrid]:
             continue
         grids.append(TableGrid(tuple(table.bbox), [list(row.cells) for row in table.rows]))
     return grids
+
+
+def rotate_grid(grid: TableGrid, quarter: int, width: float, height: float) -> TableGrid:
+    """The same grid in the upright frame of turned text: rows and columns swap,
+    so they are rebuilt from the positions of the turned cells."""
+    if not quarter:
+        return grid
+    boxes = [rotate_rect(c, quarter, width, height) for row in grid.cells for c in row if c is not None]
+    tops = sorted({round(b[1]) for b in boxes})
+    lefts = sorted({round(b[0]) for b in boxes})
+    cells: list[list[Rect | None]] = [[None] * len(lefts) for _ in tops]
+    for box in boxes:
+        cells[tops.index(round(box[1]))][lefts.index(round(box[0]))] = box
+    return TableGrid(rotate_rect(grid.bbox, quarter, width, height), cells)
 
 
 def _inside(glyph: Glyph, box: Rect) -> bool:

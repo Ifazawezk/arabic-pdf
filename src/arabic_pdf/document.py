@@ -16,6 +16,7 @@ class Block:
     size: float = 0.0
     level: int = 0  # heading level, 1 is the largest
     rows: list[list[str]] = field(default_factory=list)  # table rows in reading order
+    rotation: int = 0  # degrees the text is turned on the page; bbox is always in page coordinates
 
 
 @dataclass
