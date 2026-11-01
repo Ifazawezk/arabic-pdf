@@ -1,0 +1,9 @@
+Arabic inside English text
+
+The Arabic word كتاب means book, and its plural كتب is used in many library catalogues.
+
+In Doha, the National Library of Qatar holds more than 1,000,000 items. Its Arabic name is مكتبة قطر الوطنية.
+
+Search engines often fail when a PDF stores مرحبا as separate letter shapes instead of normal Unicode letters.
+
+A typical invoice line reads الإجمالي 7,350 QAR, which mixes two scripts and a number in one line.

@@ -1,0 +1,170 @@
+[
+  {
+    "id": "legacy_simple_arial",
+    "engine": "legacy",
+    "category": "simple",
+    "font": "arial",
+    "pages": 1
+  },
+  {
+    "id": "legacy_simple_times",
+    "engine": "legacy",
+    "category": "simple",
+    "font": "times",
+    "pages": 1
+  },
+  {
+    "id": "legacy_simple_tahoma",
+    "engine": "legacy",
+    "category": "simple",
+    "font": "tahoma",
+    "pages": 1
+  },
+  {
+    "id": "legacy_simple_trado",
+    "engine": "legacy",
+    "category": "simple",
+    "font": "trado",
+    "pages": 1
+  },
+  {
+    "id": "legacy_mixed_arial",
+    "engine": "legacy",
+    "category": "mixed",
+    "font": "arial",
+    "pages": 1
+  },
+  {
+    "id": "legacy_two_column_arial",
+    "engine": "legacy",
+    "category": "two-column",
+    "font": "arial",
+    "pages": 1
+  },
+  {
+    "id": "legacy_headers_tahoma",
+    "engine": "legacy",
+    "category": "headers",
+    "font": "tahoma",
+    "pages": 3
+  },
+  {
+    "id": "legacy_table_arial",
+    "engine": "legacy",
+    "category": "table",
+    "font": "arial",
+    "pages": 1
+  },
+  {
+    "id": "browser_simple_arial",
+    "engine": "browser",
+    "category": "simple",
+    "font": "Arial",
+    "pages": 1
+  },
+  {
+    "id": "browser_simple_segoe",
+    "engine": "browser",
+    "category": "simple",
+    "font": "Segoe UI",
+    "pages": 1
+  },
+  {
+    "id": "browser_simple_majalla",
+    "engine": "browser",
+    "category": "simple",
+    "font": "Sakkal Majalla",
+    "pages": 1
+  },
+  {
+    "id": "browser_simple_simplified",
+    "engine": "browser",
+    "category": "simple",
+    "font": "Simplified Arabic",
+    "pages": 1
+  },
+  {
+    "id": "browser_simple_typesetting",
+    "engine": "browser",
+    "category": "simple",
+    "font": "Arabic Typesetting",
+    "pages": 1
+  },
+  {
+    "id": "browser_mixed_tahoma",
+    "engine": "browser",
+    "category": "mixed",
+    "font": "Tahoma",
+    "pages": 1
+  },
+  {
+    "id": "browser_mixed_indic_times",
+    "engine": "browser",
+    "category": "mixed",
+    "font": "Times New Roman",
+    "pages": 1
+  },
+  {
+    "id": "browser_english_arabic",
+    "engine": "browser",
+    "category": "mixed",
+    "font": "Segoe UI",
+    "pages": 1
+  },
+  {
+    "id": "browser_two_column_times",
+    "engine": "browser",
+    "category": "two-column",
+    "font": "Times New Roman",
+    "pages": 1
+  },
+  {
+    "id": "browser_three_column_arial",
+    "engine": "browser",
+    "category": "two-column",
+    "font": "Arial",
+    "pages": 1
+  },
+  {
+    "id": "browser_headers_arial",
+    "engine": "browser",
+    "category": "headers",
+    "font": "Arial",
+    "pages": 3
+  },
+  {
+    "id": "browser_table_arial",
+    "engine": "browser",
+    "category": "table",
+    "font": "Arial",
+    "pages": 1
+  },
+  {
+    "id": "browser_table_tahoma",
+    "engine": "browser",
+    "category": "table",
+    "font": "Tahoma",
+    "pages": 1
+  },
+  {
+    "id": "browser_diacritics_arial",
+    "engine": "browser",
+    "category": "diacritics",
+    "font": "Arial",
+    "pages": 1
+  },
+  {
+    "id": "scanned_simple_arial",
+    "engine": "scanned",
+    "category": "scanned",
+    "font": "Arial",
+    "pages": 1
+  },
+  {
+    "id": "scanned_mixed_tahoma",
+    "engine": "scanned",
+    "category": "scanned",
+    "font": "Tahoma",
+    "pages": 1
+  }
+]
