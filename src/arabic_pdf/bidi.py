@@ -166,11 +166,12 @@ def resolve_levels(units: list[str], rtl: bool) -> list[int]:
     return levels
 
 
-def reorder(units: list[str], rtl: bool) -> list[str]:
+def reorder(units: list[str], rtl: bool, mirror: bool = True) -> list[str]:
     """Reorder glyph texts given left to right on the page into reading order.
 
     Brackets painted in a right to left run are mirrored back: the glyph a
-    reader sees as ")" at the start of an Arabic parenthesis is a "(" in the text.
+    reader sees as ")" at the start of an Arabic parenthesis is a "(" in the
+    text. Producers that already map that glyph to "(" need ``mirror=False``.
     """
     if not units:
         return []
@@ -192,7 +193,42 @@ def reorder(units: list[str], rtl: bool) -> list[str]:
     out = []
     for k in order:
         unit = units[k]
-        if levels[k] % 2 and unit in MIRRORS:
+        if mirror and levels[k] % 2 and unit in MIRRORS:
             unit = MIRRORS[unit]
         out.append(unit)
     return out
+
+
+_OPENING = "([{"
+_CLOSING = ")]}"
+
+
+def bracket_errors(text: str) -> int:
+    """How many brackets in the text have no partner, or close before they open."""
+    errors = 0
+    stack: list[str] = []
+    for ch in text:
+        if ch in _OPENING:
+            stack.append(ch)
+        elif ch in _CLOSING:
+            if stack and _OPENING.index(stack[-1]) == _CLOSING.index(ch):
+                stack.pop()
+            else:
+                errors += 1
+    return errors + len(stack)
+
+
+def needs_mirroring(lines: list[tuple[list[str], bool]]) -> bool:
+    """Decide from a page of lines how this producer maps its bracket glyphs.
+
+    Some producers map a glyph by its shape, others by the character it stands
+    for, and a PDF does not say which. Both readings of a page are tried and
+    the one with balanced brackets wins. Mirroring is the default on a tie.
+    """
+    with_mirror = without = 0
+    for units, rtl in lines:
+        if not any(u in _OPENING or u in _CLOSING for u in units):
+            continue
+        with_mirror += bracket_errors("".join(reorder(units, rtl, True)))
+        without += bracket_errors("".join(reorder(units, rtl, False)))
+    return with_mirror <= without

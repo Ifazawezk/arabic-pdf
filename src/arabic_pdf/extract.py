@@ -12,7 +12,7 @@ from . import ocr as ocr_engine
 from .blocks import mark_headings, page_blocks
 from .document import Document, Page
 from .glyphs import Glyph, attach_marks, read_glyphs, remove_duplicates
-from .layout import Line, is_rtl, page_lines, remove_running_text, table_line
+from .layout import Line, is_rtl, page_lines, page_needs_mirroring, remove_running_text, table_line
 from .normalize import uses_non_arabic_letters
 from .render import to_markdown, to_text
 from .tables import find_grids, read_table, split_table_glyphs
@@ -49,14 +49,15 @@ def read_page(page: pymupdf.Page, tables: bool, mode: str, language: str, dpi: i
         return _PageRead(page, [], needs_ocr=flagged)
     rtl = is_rtl(glyphs)
     variants = not uses_non_arabic_letters("".join(g.text for g in glyphs))
+    mirror = page_needs_mirroring(glyphs, rtl)
     grids = find_grids(page) if tables else []
     flow, table_glyphs = split_table_glyphs(glyphs, grids)
     entries = []
     for grid, inside in zip(grids, table_glyphs):
-        rows, table_rtl = read_table(grid, inside, rtl, variants)
+        rows, table_rtl = read_table(grid, inside, rtl, variants, mirror)
         size = statistics.median(g.size for g in inside) if inside else 0.0
         entries.append(table_line(grid.bbox, rows, size, table_rtl))
-    return _PageRead(page, page_lines(flow, rtl, variants, entries), rtl, variants, used_ocr, flagged,
+    return _PageRead(page, page_lines(flow, rtl, variants, entries, mirror), rtl, variants, used_ocr, flagged,
                      sum(ocr_engine.is_unmapped(g.text) for g in glyphs))
 
 

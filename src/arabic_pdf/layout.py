@@ -7,7 +7,7 @@ import statistics
 from collections import Counter
 from dataclasses import dataclass
 
-from .bidi import STRONG_L, STRONG_R, bidi_class, reorder
+from .bidi import STRONG_L, STRONG_R, bidi_class, needs_mirroring, reorder
 from .glyphs import Glyph
 from .normalize import fold
 
@@ -28,6 +28,7 @@ class Line:
     text: str = ""
     rtl: bool = True
     column: int | None = 0  # None when the line spans several columns
+    mirror: bool = True  # brackets in right to left runs need mirroring on this page
     table: list[list[str]] | None = None  # set when this entry stands for a whole table
 
     @property
@@ -132,9 +133,18 @@ def with_spaces(glyphs: list[Glyph]) -> list[Glyph]:
 def line_text(line: Line, rtl: bool, arabic_variants: bool = True) -> str:
     """Logical text of one line."""
     units = with_spaces(line.glyphs)
-    ordered = reorder([u.full_text for u in units], rtl)
+    ordered = reorder([u.full_text for u in units], rtl, line.mirror)
     text = fold("".join(ordered), arabic_variants=arabic_variants)
     return " ".join(text.split())
+
+
+def page_needs_mirroring(glyphs: list[Glyph], page_rtl: bool) -> bool:
+    """Run the bracket check over all rows of a page."""
+    rows = []
+    for row in build_rows(glyphs):
+        units = [u.text for u in with_spaces(row)]
+        rows.append((units, is_rtl(row, default=page_rtl)))
+    return needs_mirroring(rows)
 
 
 def ink_intervals(row: list[Glyph]) -> list[tuple[float, float]]:
@@ -241,7 +251,7 @@ def table_line(bbox, rows: list[list[str]], size: float, rtl: bool) -> Line:
 
 
 def page_lines(glyphs: list[Glyph], page_rtl: bool, arabic_variants: bool = True,
-               tables: list[Line] | None = None) -> list[Line]:
+               tables: list[Line] | None = None, mirror: bool = True) -> list[Line]:
     """Lines of a page in reading order, with any tables in their place."""
     rows = build_rows(glyphs)
     gutters = find_gutters(rows)
@@ -252,6 +262,7 @@ def page_lines(glyphs: list[Glyph], page_rtl: bool, arabic_variants: bool = True
             parts.reverse()
         lines.extend(parts)
     for line in lines:
+        line.mirror = mirror
         line.column = column_of(line, gutters)
         line.rtl = is_rtl(line.glyphs, default=page_rtl)
         line.text = line_text(line, line.rtl, arabic_variants)

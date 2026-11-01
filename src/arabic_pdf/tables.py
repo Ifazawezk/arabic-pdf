@@ -57,16 +57,17 @@ def split_table_glyphs(glyphs: list[Glyph], grids: list[TableGrid]) -> tuple[lis
     return flow, inside
 
 
-def cell_text(glyphs: list[Glyph], rtl: bool, arabic_variants: bool) -> str:
+def cell_text(glyphs: list[Glyph], rtl: bool, arabic_variants: bool, mirror: bool = True) -> str:
     """Text of one cell. Direction comes from the table, not the cell: a cell
     like "2,450 QAR" in an Arabic table is laid out right to left."""
     if not any(not g.is_space for g in glyphs):
         return ""
-    lines = [Line(row) for row in build_rows(glyphs)]
+    lines = [Line(row, mirror=mirror) for row in build_rows(glyphs)]
     return " ".join(t for t in (line_text(ln, rtl, arabic_variants) for ln in lines) if t)
 
 
-def read_table(grid: TableGrid, glyphs: list[Glyph], default_rtl: bool, arabic_variants: bool) -> tuple[list[list[str]], bool]:
+def read_table(grid: TableGrid, glyphs: list[Glyph], default_rtl: bool, arabic_variants: bool,
+               mirror: bool = True) -> tuple[list[list[str]], bool]:
     """Rows of cell texts in reading order, and the table direction."""
     rtl = is_rtl(glyphs, default=default_rtl)
     rows = []
@@ -74,6 +75,6 @@ def read_table(grid: TableGrid, glyphs: list[Glyph], default_rtl: bool, arabic_v
         cells = []
         for box in row:
             cell_glyphs = [g for g in glyphs if box is not None and _inside(g, box)]
-            cells.append(cell_text(cell_glyphs, rtl, arabic_variants))
+            cells.append(cell_text(cell_glyphs, rtl, arabic_variants, mirror))
         rows.append(cells[::-1] if rtl else cells)
     return rows, rtl

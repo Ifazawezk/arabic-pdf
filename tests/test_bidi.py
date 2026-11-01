@@ -1,4 +1,4 @@
-from arabic_pdf.bidi import bidi_class, reorder
+from arabic_pdf.bidi import bidi_class, bracket_errors, needs_mirroring, reorder
 
 
 def logical(visual: str, rtl: bool = True) -> str:
@@ -73,3 +73,30 @@ def test_brackets_are_mirrored_back():
 
 def test_arabic_indic_digits_and_percent():
     assert logical("ةدايزب ٪١٨ نع") == "عن ١٨٪ بزيادة"
+
+
+def test_brackets_stay_when_the_producer_already_mapped_them():
+    # Adobe tools map the glyph to the character it stands for, not its shape
+    assert "".join(reorder(list(")2 لودجلا رظنا( طقف"), True, mirror=False)) == "فقط (انظر الجدول 2)"
+
+
+def test_bracket_errors():
+    assert bracket_errors("(a) [b]") == 0
+    assert bracket_errors(")a(") == 2
+    assert bracket_errors("(a") == 1
+    assert bracket_errors("no brackets") == 0
+
+
+def test_page_vote_finds_shape_mapped_brackets():
+    lines = [(list("(2 لودجلا رظنا) طقف"), True)]
+    assert needs_mirroring(lines)
+
+
+def test_page_vote_finds_logically_mapped_brackets():
+    lines = [(list(")2 لودجلا رظنا( طقف"), True), (list(")5.1.1( لكشلا"), True)]
+    assert not needs_mirroring(lines)
+
+
+def test_page_vote_defaults_to_mirroring():
+    assert needs_mirroring([(list("مالس"), True)])
+    assert needs_mirroring([])
