@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pymupdf
 
-from .glyphs import read_glyphs
+from .glyphs import attach_marks, read_glyphs, remove_duplicates
 from .layout import is_rtl, page_lines
 from .normalize import uses_non_arabic_letters
 
 
 def page_text(page: pymupdf.Page) -> str:
-    glyphs = read_glyphs(page)
+    glyphs = attach_marks(remove_duplicates(read_glyphs(page)))
     if not glyphs:
         return ""
     page_rtl = is_rtl(glyphs)

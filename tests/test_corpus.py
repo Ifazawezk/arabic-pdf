@@ -7,7 +7,7 @@ from pathlib import Path
 import pymupdf
 
 CORPUS = Path(__file__).resolve().parent.parent / "corpus"
-PRESENTATION_FORMS = re.compile("[ﭐ-﷿ﹰ-﻿]")
+PRESENTATION_FORMS = re.compile("[\ufb50-\ufdff\ufe70-\ufeff]")
 
 
 def manifest():

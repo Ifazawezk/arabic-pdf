@@ -7,7 +7,7 @@ def test_levenshtein_basic():
 
 
 def test_prepare_collapses_space_and_drops_bidi_marks():
-    assert prepare("  مرحبا‏\n\n  بكم ") == "مرحبا بكم"
+    assert prepare("  مرحبا\u200f\n\n  بكم ") == "مرحبا بكم"
 
 
 def test_cer_perfect_and_empty():
@@ -17,7 +17,7 @@ def test_cer_perfect_and_empty():
 
 def test_presentation_forms_count_as_errors():
     # same word, shaped glyph codes instead of letters
-    assert cer("مرحبا", "ﻣﺮﺣﺒﺎ") == 1.0
+    assert cer("مرحبا", "\ufee3\ufeae\ufea3\ufe92\ufe8e") == 1.0
 
 
 def test_word_order_reversed_scores_zero():

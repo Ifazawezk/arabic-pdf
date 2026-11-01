@@ -19,7 +19,7 @@ try:  # optional, only makes long documents faster
 except ImportError:  # pragma: no cover
     _rf_lev = None
 
-_INVISIBLE = re.compile("[​-‏‪-‮⁦-⁩﻿­]")
+_INVISIBLE = re.compile("[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff\u00ad]")
 _SPACE = re.compile(r"\s+")
 
 

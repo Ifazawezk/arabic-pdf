@@ -23,6 +23,14 @@ def test_wide_gap_splits_row():
 
 
 def test_page_lines_arabic_logical_order():
-    glyphs = visual_glyphs("ﻢﻜﻴﻠﻋ ﻡﻼﺳ", baseline=100) + visual_glyphs("ﺎﺒﺣﺮﻣ", baseline=130)
+    glyphs = visual_glyphs("\ufee2\ufedc\ufef4\ufee0\ufecb \ufee1\ufefc\ufeb3", baseline=100) + visual_glyphs("\ufe8e\ufe92\ufea3\ufeae\ufee3", baseline=130)
     lines = page_lines(glyphs, page_rtl=True)
     assert [ln.text for ln in lines] == ["سلام عليكم", "مرحبا"]
+
+
+def test_overlapping_glyphs_sort_by_centre():
+    from arabic_pdf.glyphs import Glyph
+
+    alef = Glyph("a", 211.4, 90, 214.3, 103, 100, 12)
+    reh = Glyph("b", 210.9, 90, 217.8, 103, 100, 12)  # starts left of alef, ends right of it
+    assert [g.text for g in build_rows([reh, alef])[0]] == ["a", "b"]

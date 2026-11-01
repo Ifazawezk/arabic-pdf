@@ -77,7 +77,7 @@ def is_rtl(glyphs, default: bool = True) -> bool:
 def build_rows(glyphs: list[Glyph]) -> list[list[Glyph]]:
     """Cluster glyphs that share a baseline."""
     rows: list[list[Glyph]] = []
-    for g in sorted(glyphs, key=lambda g: (g.baseline, g.x0)):
+    for g in sorted(glyphs, key=lambda g: (g.baseline, g.cx)):
         if rows:
             row = rows[-1]
             ref = row[0]
@@ -85,7 +85,9 @@ def build_rows(glyphs: list[Glyph]) -> list[list[Glyph]]:
                 row.append(g)
                 continue
         rows.append([g])
-    return [sorted(r, key=lambda g: g.x0) for r in rows]
+    # sort by centre: fonts tuck alef into the advance of a preceding reh, so
+    # the left edges of overlapping glyphs can come in the wrong order
+    return [sorted(r, key=lambda g: g.cx) for r in rows]
 
 
 def split_row(row: list[Glyph]) -> list[list[Glyph]]:

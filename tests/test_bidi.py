@@ -7,12 +7,12 @@ def logical(visual: str, rtl: bool = True) -> str:
 
 def test_classes():
     assert bidi_class("ب") == "R"
-    assert bidi_class("ﻻ") == "R"  # presentation forms are Arabic letters too
+    assert bidi_class("\ufefb") == "R"  # presentation forms are Arabic letters too
     assert bidi_class("a") == "L"
     assert bidi_class("5") == "EN"
     assert bidi_class("١") == "AN"
     assert bidi_class(" ") == "ON"
-    assert bidi_class("") == "ON"  # unmapped private use glyph
+    assert bidi_class("\ue000") == "ON"  # unmapped private use glyph
 
 
 def test_pure_arabic_line_is_reversed():
