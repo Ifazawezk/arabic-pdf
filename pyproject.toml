@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arabic-pdf"
+version = "0.1.0"
+description = "Extract clean Unicode text and Markdown from Arabic and mixed Arabic/English PDFs"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Mohaned Elhagar" }]
+requires-python = ">=3.10"
+dependencies = ["pymupdf>=1.24"]
+keywords = ["arabic", "pdf", "rtl", "bidi", "text-extraction", "nlp", "ocr", "markdown"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Arabic",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+arpdf = "arabic_pdf.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
