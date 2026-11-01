@@ -13,6 +13,11 @@ from .normalize import fold
 SPLIT_GAP = 2.5
 # a gap wider than this (in font sizes) between two glyphs is a word space
 SPACE_GAP = 0.18
+# a hole in a row at least this wide (in font sizes) may be a column gutter
+GUTTER_HOLE = 0.8
+# holes must line up over at least this width (in font sizes) and this many rows
+GUTTER_WIDTH = 0.6
+GUTTER_ROWS = 3
 
 
 @dataclass
@@ -20,15 +25,20 @@ class Line:
     glyphs: list[Glyph]  # left to right on the page
     text: str = ""
     rtl: bool = True
+    column: int | None = 0  # None when the line spans several columns
     tags: set = field(default_factory=set)
 
     @property
+    def ink(self) -> list[Glyph]:
+        return [g for g in self.glyphs if not g.is_space]
+
+    @property
     def x0(self) -> float:
-        return min(g.x0 for g in self.glyphs)
+        return min(g.x0 for g in self.ink or self.glyphs)
 
     @property
     def x1(self) -> float:
-        return max(g.x1 for g in self.glyphs)
+        return max(g.x1 for g in self.ink or self.glyphs)
 
     @property
     def y0(self) -> float:
@@ -39,16 +49,16 @@ class Line:
         return max(g.y1 for g in self.glyphs)
 
     @property
+    def cx(self) -> float:
+        return (self.x0 + self.x1) / 2
+
+    @property
     def baseline(self) -> float:
         return statistics.median(g.baseline for g in self.glyphs)
 
     @property
     def size(self) -> float:
-        return statistics.median(g.size for g in self.glyphs if not g.is_space) if self.ink else self.glyphs[0].size
-
-    @property
-    def ink(self) -> list[Glyph]:
-        return [g for g in self.glyphs if not g.is_space]
+        return statistics.median(g.size for g in self.ink or self.glyphs)
 
     @property
     def bbox(self) -> tuple[float, float, float, float]:
@@ -125,15 +135,113 @@ def line_text(line: Line, rtl: bool, arabic_variants: bool = True) -> str:
     return " ".join(text.split())
 
 
+def ink_intervals(row: list[Glyph]) -> list[tuple[float, float]]:
+    """Painted stretches of a row, ignoring word gaps."""
+    spans: list[list[float]] = []
+    for g in row:
+        if g.is_space:
+            continue
+        if spans and g.x0 - spans[-1][1] <= GUTTER_HOLE * g.size:
+            spans[-1][1] = max(spans[-1][1], g.x1)
+        else:
+            spans.append([g.x0, g.x1])
+    return [(a, b) for a, b in spans]
+
+
+def find_gutters(rows: list[list[Glyph]]) -> list[tuple[float, float]]:
+    """Vertical bands of white space that separate columns.
+
+    A gutter shows up as a hole at the same x position in many rows. Word gaps
+    can line up by chance, so a band only counts if the rows with the hole
+    outnumber the rows running straight through it. Those through-rows are
+    fine in small numbers: a title or a full width paragraph above the columns.
+    """
+    sizes = [g.size for row in rows for g in row if not g.is_space]
+    if not sizes:
+        return []
+    size = statistics.median(sizes)
+    intervals = [ink_intervals(row) for row in rows]
+    holes = []  # (x0, x1, row index)
+    for i, spans in enumerate(intervals):
+        for (_, a), (b, _) in zip(spans, spans[1:]):
+            holes.append((a, b, i))
+    # narrow holes first: a row that skips a whole column has a very wide hole
+    # that contains the gutters but must not widen them
+    holes.sort(key=lambda h: h[1] - h[0])
+    clusters: list[dict] = []
+    for a, b, i in holes:
+        for c in clusters:
+            lo, hi = max(a, c["a"]), min(b, c["b"])
+            if hi - lo >= GUTTER_WIDTH * size:
+                c["a"], c["b"] = lo, hi
+                c["rows"].add(i)
+                break
+        else:
+            if b - a >= GUTTER_WIDTH * size:
+                clusters.append({"a": a, "b": b, "rows": {i}})
+    gutters = []
+    for c in clusters:
+        if len(c["rows"]) < GUTTER_ROWS:
+            continue
+        first, last = min(c["rows"]), max(c["rows"])
+        crossing = sum(
+            1 for i in range(first, last + 1)
+            if i not in c["rows"] and any(a < c["b"] and b > c["a"] for a, b in intervals[i])
+        )
+        if len(c["rows"]) >= crossing:
+            gutters.append((c["a"], c["b"]))
+    return sorted(gutters)
+
+
+def split_at_gutters(row: list[Glyph], gutters: list[tuple[float, float]]) -> list[list[Glyph]]:
+    """Cut a row at every gutter it does not paint across."""
+    cuts = [(a + b) / 2 for a, b in gutters
+            if not any(not g.is_space and g.x0 < b and g.x1 > a for g in row)]
+    parts: list[list[Glyph]] = [[] for _ in range(len(cuts) + 1)]
+    for g in row:
+        parts[sum(1 for c in cuts if g.cx > c)].append(g)
+    return [p for p in parts if p]
+
+
+def column_of(line: Line, gutters: list[tuple[float, float]]) -> int | None:
+    """Column index counted from the left, or None if the line crosses a gutter."""
+    if any(line.x0 < a and line.x1 > b for a, b in gutters):
+        return None
+    return sum(1 for a, b in gutters if line.cx > (a + b) / 2)
+
+
+def reading_order(lines: list[Line], page_rtl: bool) -> list[Line]:
+    """Sort lines column by column, in bands separated by lines that span columns."""
+    ordered: list[Line] = []
+    band: list[Line] = []
+
+    def flush():
+        for col in sorted({ln.column for ln in band}, reverse=page_rtl):
+            ordered.extend(ln for ln in band if ln.column == col)
+        band.clear()
+
+    for line in lines:  # already top to bottom, and in order inside a row
+        if line.column is None:
+            flush()
+            ordered.append(line)
+        else:
+            band.append(line)
+    flush()
+    return ordered
+
+
 def page_lines(glyphs: list[Glyph], page_rtl: bool, arabic_variants: bool = True) -> list[Line]:
-    """Lines of a page in reading order, top to bottom."""
+    """Lines of a page in reading order."""
+    rows = build_rows(glyphs)
+    gutters = find_gutters(rows)
     lines = []
-    for row in build_rows(glyphs):
-        parts = [Line(p) for p in split_row(row)]
+    for row in rows:
+        parts = [Line(p) for piece in split_at_gutters(row, gutters) for p in split_row(piece)]
         if page_rtl:
             parts.reverse()
         lines.extend(parts)
     for line in lines:
+        line.column = column_of(line, gutters)
         line.rtl = is_rtl(line.glyphs, default=page_rtl)
         line.text = line_text(line, line.rtl, arabic_variants)
-    return [ln for ln in lines if ln.text]
+    return [ln for ln in reading_order(lines, page_rtl) if ln.text]
