@@ -83,6 +83,7 @@ EXTRACTORS = {
 }
 
 
+
 def load_manifest():
     return json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
 
@@ -123,8 +124,13 @@ def summarize(rows):
         "cer": edits / chars if chars else 0.0,
         "word_order": sum(r["word_order"] for r in rows) / len(rows),
         "docs": len(rows),
-        "seconds_per_page": sum(r["seconds"] for r in rows) / max(1, sum(r["pages"] for r in rows)),
     }
+
+
+def seconds_per_page(rows):
+    """Speed on pages with a text layer. Scanned pages are left out: there the OCR engine dominates."""
+    text_rows = [r for r in rows if r["category"] != "scanned"]
+    return sum(r["seconds"] for r in text_rows) / max(1, sum(r["pages"] for r in text_rows))
 
 
 def pct(x):
@@ -136,7 +142,8 @@ def markdown_report(results, docs) -> str:
     cats = [c for c in CATEGORIES if any(d["category"] == c for d in docs)]
     lines.append(f"Corpus: {len(docs)} documents, {sum(d['pages'] for d in docs)} pages. "
                  "CER is micro averaged (total edits / total characters), lower is better. "
-                 "Word order is the share of reference word pairs found in the same order, higher is better.")
+                 "Word order is the share of reference word pairs found in the same order, higher is better. "
+                 "Time / page covers pages with a text layer only.")
     lines.append("")
     lines.append("| Extractor | CER | Word order | " + " | ".join(f"CER {c}" for c in cats) + " | Time / page |")
     lines.append("|---|---:|---:|" + "---:|" * len(cats) + "---:|")
@@ -145,7 +152,7 @@ def markdown_report(results, docs) -> str:
         per_cat = [summarize([r for r in rows if r["category"] == c]) for c in cats]
         cells = [pct(overall["cer"]), pct(overall["word_order"])]
         cells += [pct(s["cer"]) if s else "n/a" for s in per_cat]
-        cells.append(f"{overall['seconds_per_page'] * 1000:.0f} ms")
+        cells.append(f"{seconds_per_page(rows) * 1000:.0f} ms")
         name = f"**{tool}**" if tool == "arpdf" else tool
         lines.append(f"| {name} | " + " | ".join(cells) + " |")
     lines.append("")

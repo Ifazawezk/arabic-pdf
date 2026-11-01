@@ -63,6 +63,7 @@ def read_page(page: pymupdf.Page, tables: bool, mode: str, language: str, dpi: i
 
 def extract(
     path: str | os.PathLike,
+    pages: list[int] | None = None,
     keep_running_text: bool = False,
     tables: bool = True,
     ocr: str = "auto",
@@ -71,6 +72,7 @@ def extract(
 ) -> Document:
     """Read a PDF into a Document of pages and blocks.
 
+    ``pages`` holds 1 based page numbers; numbers past the end are ignored.
     ``ocr`` is "auto" (scanned pages only), "always" or "never". Pages that
     need OCR when it is off or unavailable come back empty with ``needs_ocr`` set.
     """
@@ -78,7 +80,10 @@ def extract(
         raise ValueError(f"ocr must be one of {OCR_MODES}")
     document = Document(source=os.fspath(path))
     with pymupdf.open(path) as pdf:
-        reads = [read_page(page, tables, ocr, ocr_language, ocr_dpi) for page in pdf]
+        if pdf.needs_pass:
+            raise ValueError(f"{path} is password protected")
+        numbers = range(pdf.page_count) if pages is None else [n - 1 for n in pages if n <= pdf.page_count]
+        reads = [read_page(pdf[n], tables, ocr, ocr_language, ocr_dpi) for n in numbers]
         all_lines = [r.lines for r in reads]
         if not keep_running_text:
             all_lines = remove_running_text(all_lines, [r.page.rect.height for r in reads])
