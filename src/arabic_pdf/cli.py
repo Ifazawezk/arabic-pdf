@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import sys
 
+import pymupdf
+
 from .extract import extract
 from .render import to_markdown, to_text
 
@@ -17,6 +19,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-o", "--output", help="output file (default: stdout)")
     parser.add_argument("-f", "--format", choices=sorted(FORMATS), default="text")
     args = parser.parse_args(argv)
+
+    # MuPDF prints warnings to stdout by default, which would end up in the output
+    pymupdf.set_messages(stream=sys.stderr)
+    pymupdf.set_log(stream=sys.stderr)
 
     text = FORMATS[args.format](extract(args.pdf))
     if args.output:

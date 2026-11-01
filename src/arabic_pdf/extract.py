@@ -3,35 +3,44 @@
 from __future__ import annotations
 
 import os
+import statistics
 
 import pymupdf
 
 from .blocks import mark_headings, page_blocks
 from .document import Document, Page
 from .glyphs import attach_marks, read_glyphs, remove_duplicates
-from .layout import Line, is_rtl, page_lines, remove_running_text
+from .layout import Line, is_rtl, page_lines, remove_running_text, table_line
 from .normalize import uses_non_arabic_letters
 from .render import to_markdown, to_text
+from .tables import find_grids, read_table, split_table_glyphs
 
 
 def _page_flags(glyphs) -> tuple[bool, bool]:
     return is_rtl(glyphs), not uses_non_arabic_letters("".join(g.text for g in glyphs))
 
 
-def read_lines(page: pymupdf.Page) -> tuple[list[Line], bool, bool]:
+def read_lines(page: pymupdf.Page, tables: bool = True) -> tuple[list[Line], bool, bool]:
     """Lines in reading order, plus the page direction and the letter variant setting."""
     glyphs = attach_marks(remove_duplicates(read_glyphs(page)))
     if not glyphs:
         return [], True, True
     page_rtl, arabic_variants = _page_flags(glyphs)
-    return page_lines(glyphs, page_rtl, arabic_variants), page_rtl, arabic_variants
+    grids = find_grids(page) if tables else []
+    flow, table_glyphs = split_table_glyphs(glyphs, grids)
+    entries = []
+    for grid, inside in zip(grids, table_glyphs):
+        rows, rtl = read_table(grid, inside, page_rtl, arabic_variants)
+        size = statistics.median(g.size for g in inside) if inside else 0.0
+        entries.append(table_line(grid.bbox, rows, size, rtl))
+    return page_lines(flow, page_rtl, arabic_variants, entries), page_rtl, arabic_variants
 
 
-def extract(path: str | os.PathLike, keep_running_text: bool = False) -> Document:
+def extract(path: str | os.PathLike, keep_running_text: bool = False, tables: bool = True) -> Document:
     """Read a PDF into a Document of pages and blocks."""
     document = Document(source=os.fspath(path))
     with pymupdf.open(path) as pdf:
-        pages = [(page, *read_lines(page)) for page in pdf]
+        pages = [(page, *read_lines(page, tables)) for page in pdf]
         heights = [page.rect.height for page, *_ in pages]
         all_lines = [lines for _, lines, _, _ in pages]
         if not keep_running_text:

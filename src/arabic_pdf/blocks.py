@@ -35,7 +35,7 @@ def normal_step(lines: list[Line]) -> float:
     steps = []
     for a, b in zip(lines, lines[1:]):
         step = b.baseline - a.baseline
-        if a.column == b.column and step > 0 and _same_size(a, b):
+        if a.column == b.column and step > 0 and _same_size(a, b) and not (a.table or b.table):
             steps.append(step)
     return statistics.median(steps) if steps else 0.0
 
@@ -47,12 +47,15 @@ def _same_size(a: Line, b: Line) -> bool:
 def column_widths(lines: list[Line]) -> dict:
     widths: dict = {}
     for line in lines:
-        widths[line.column] = max(widths.get(line.column, 0.0), line.x1 - line.x0)
+        if line.table is None:
+            widths[line.column] = max(widths.get(line.column, 0.0), line.x1 - line.x0)
     return widths
 
 
 def continues(prev: Line, line: Line, step: float, widths: dict) -> bool:
     """True if ``line`` belongs to the same paragraph as ``prev``."""
+    if prev.table is not None or line.table is not None:
+        return False
     if not _same_size(prev, line) or is_bold(prev) != is_bold(line):
         return False
     if prev.column is None or line.column is None:
@@ -84,6 +87,9 @@ def group_paragraphs(lines: list[Line]) -> list[list[Line]]:
 def paragraph_block(group: list[Line], page_rtl: bool, arabic_variants: bool) -> Block:
     """Lines to one block. The direction comes from the whole paragraph, so a
     wrapped line that happens to be mostly Latin stays in an Arabic paragraph."""
+    first = group[0]
+    if first.table is not None:
+        return Block("table", first.text, first.bbox, rtl=first.rtl, size=first.size, rows=first.table)
     glyphs = [g for line in group for g in line.ink]
     rtl = is_rtl(glyphs, default=page_rtl)
     text = " ".join(t for t in (line_text(ln, rtl, arabic_variants) for ln in group) if t)

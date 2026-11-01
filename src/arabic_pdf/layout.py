@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import statistics
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .bidi import STRONG_L, STRONG_R, bidi_class, reorder
 from .glyphs import Glyph
@@ -28,7 +28,7 @@ class Line:
     text: str = ""
     rtl: bool = True
     column: int | None = 0  # None when the line spans several columns
-    tags: set = field(default_factory=set)
+    table: list[list[str]] | None = None  # set when this entry stands for a whole table
 
     @property
     def ink(self) -> list[Glyph]:
@@ -232,8 +232,17 @@ def reading_order(lines: list[Line], page_rtl: bool) -> list[Line]:
     return ordered
 
 
-def page_lines(glyphs: list[Glyph], page_rtl: bool, arabic_variants: bool = True) -> list[Line]:
-    """Lines of a page in reading order."""
+def table_line(bbox, rows: list[list[str]], size: float, rtl: bool) -> Line:
+    """A placeholder that lets a table take its place in the reading order."""
+    x0, y0, x1, y1 = bbox
+    box = Glyph(chr(0xFFFC), x0, y0, x1, y1, y0, size)
+    text = "\n".join("\t".join(row) for row in rows)
+    return Line([box], text=text, rtl=rtl, table=rows)
+
+
+def page_lines(glyphs: list[Glyph], page_rtl: bool, arabic_variants: bool = True,
+               tables: list[Line] | None = None) -> list[Line]:
+    """Lines of a page in reading order, with any tables in their place."""
     rows = build_rows(glyphs)
     gutters = find_gutters(rows)
     lines = []
@@ -246,6 +255,10 @@ def page_lines(glyphs: list[Glyph], page_rtl: bool, arabic_variants: bool = True
         line.column = column_of(line, gutters)
         line.rtl = is_rtl(line.glyphs, default=page_rtl)
         line.text = line_text(line, line.rtl, arabic_variants)
+    for table in tables or ():
+        table.column = column_of(table, gutters)
+        position = next((i for i, ln in enumerate(lines) if ln.baseline > table.baseline), len(lines))
+        lines.insert(position, table)
     return [ln for ln in reading_order(lines, page_rtl) if ln.text]
 
 
