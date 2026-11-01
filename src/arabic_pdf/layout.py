@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 import statistics
+from collections import Counter
 from dataclasses import dataclass, field
 
 from .bidi import STRONG_L, STRONG_R, bidi_class, reorder
@@ -245,3 +247,45 @@ def page_lines(glyphs: list[Glyph], page_rtl: bool, arabic_variants: bool = True
         line.rtl = is_rtl(line.glyphs, default=page_rtl)
         line.text = line_text(line, line.rtl, arabic_variants)
     return [ln for ln in reading_order(lines, page_rtl) if ln.text]
+
+
+_DIGITS = re.compile("[0-9\u0660-\u0669\u06f0-\u06f9]+")
+# share of the page height, at the top and at the bottom, where running text lives
+MARGIN_BAND = 0.12
+
+
+def line_signature(text: str) -> str:
+    """Text with numbers blanked, so "page 3" and "page 4" count as the same line."""
+    return "".join(_DIGITS.sub("#", text).split())
+
+
+def remove_running_text(pages: list[list[Line]], heights: list[float]) -> list[list[Line]]:
+    """Drop headers, footers and page numbers: lines that repeat in the page margins.
+
+    A line goes only if it sits in the top or bottom band of the page and the
+    same text, ignoring numbers, shows up there on at least half of the pages.
+    A one page document has nothing to compare with, so it is left alone.
+    """
+    if len(pages) < 2:
+        return pages
+    needed = max(2, (len(pages) + 1) // 2)
+    seen: Counter = Counter()
+    for lines, height in zip(pages, heights):
+        found = set()
+        for line in lines:
+            if line.y1 <= MARGIN_BAND * height:
+                found.add(("top", line_signature(line.text)))
+            elif line.y0 >= (1 - MARGIN_BAND) * height:
+                found.add(("bottom", line_signature(line.text)))
+        seen.update(found)
+    running = {key for key, count in seen.items() if count >= needed}
+
+    def is_running(line: Line, height: float) -> bool:
+        sig = line_signature(line.text)
+        if line.y1 <= MARGIN_BAND * height:
+            return ("top", sig) in running
+        if line.y0 >= (1 - MARGIN_BAND) * height:
+            return ("bottom", sig) in running
+        return False
+
+    return [[ln for ln in lines if not is_running(ln, height)] for lines, height in zip(pages, heights)]
