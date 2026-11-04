@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 from .document import Block, Document
 
@@ -35,13 +35,24 @@ def _block_markdown(block: Block) -> str:
     return block.text
 
 
+def joined_blocks(document: Document) -> list[Block]:
+    """Blocks with each paragraph that runs over a page break put back together."""
+    blocks: list[Block] = []
+    for block in document.blocks:
+        if blocks and blocks[-1].continues:
+            blocks[-1] = replace(blocks[-1], text=blocks[-1].text + " " + block.text, continues=block.continues)
+        else:
+            blocks.append(block)
+    return blocks
+
+
 def to_text(document: Document) -> str:
     """Blocks separated by blank lines; table cells separated by tabs."""
-    return "\n\n".join(_block_text(b) for b in document.blocks)
+    return "\n\n".join(_block_text(b) for b in joined_blocks(document))
 
 
 def to_markdown(document: Document) -> str:
-    return "\n\n".join(_block_markdown(b) for b in document.blocks)
+    return "\n\n".join(_block_markdown(b) for b in joined_blocks(document))
 
 
 def to_json(document: Document, indent: int | None = 2) -> str:
