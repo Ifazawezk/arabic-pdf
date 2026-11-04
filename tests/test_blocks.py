@@ -1,6 +1,6 @@
 from helpers import visual_glyphs
 
-from arabic_pdf.blocks import group_paragraphs, mark_headings, page_blocks
+from arabic_pdf.blocks import group_paragraphs, mark_headings, page_blocks, runs_on
 from arabic_pdf.document import Block, Document, Page
 from arabic_pdf.layout import Line, page_lines
 
@@ -75,3 +75,23 @@ def test_one_line_paragraphs_stay_apart():
 def test_double_spaced_text_stays_one_paragraph():
     lines = lines_of(("a" * 40, 100), ("b" * 40, 124), ("c" * 40, 148), ("d" * 40, 172))
     assert [len(g) for g in group_paragraphs(lines)] == [4]
+
+
+def test_full_line_without_a_full_stop_runs_on_to_the_next_page():
+    page = lines_of(("a" * 40, 100), ("b" * 40, 120))
+    assert runs_on(page, lines_of(("c" * 40, 100)))
+
+
+def test_paragraph_that_ends_at_the_foot_of_a_page_does_not_run_on():
+    after = lines_of(("c" * 40, 100))
+    assert not runs_on(lines_of(("a" * 40, 100), ("b" * 39 + ".", 120)), after)
+    assert not runs_on(lines_of(("a" * 40, 100), ("b" * 39 + "؟", 120)), after)
+    assert not runs_on(lines_of(("a" * 40, 100), ("b" * 10, 120)), after)
+
+
+def test_heading_at_the_top_of_the_next_page_is_not_joined():
+    page = lines_of(("a" * 40, 100), ("b" * 40, 120))
+    heading = Line(visual_glyphs("c" * 20, baseline=100, size=18.0))
+    heading.text = "c" * 20
+    assert not runs_on(page, [heading])
+    assert not runs_on(page, [])

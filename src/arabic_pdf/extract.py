@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from . import ocr as ocr_engine
-from .blocks import mark_headings, page_blocks
+from .blocks import mark_headings, page_blocks, runs_on
 from .document import Block, Document, Page
 from .glyphs import Glyph, attach_marks, learn_ligatures, read_glyphs, remove_duplicates, unrotate_rect
 from .layout import Line, is_rtl, page_lines, page_needs_mirroring, remove_running_text, table_line
@@ -131,6 +131,15 @@ def extract(
                 needs_ocr=read.needs_ocr, unmapped_glyphs=read.unmapped,
             ))
     mark_headings(document)
+    for i, (before, after) in enumerate(zip(document.pages, document.pages[1:])):
+        # only upright text that ends one page and starts the next
+        ending, starting = upright[i], upright[i + 1]
+        if (after.number == before.number + 1 and ending and starting
+                and before.blocks and after.blocks
+                and reads[i].frames[-1] is ending and reads[i + 1].frames[0] is starting
+                and before.blocks[-1].kind == after.blocks[0].kind == "paragraph"
+                and runs_on(ending.lines, starting.lines)):
+            before.blocks[-1].continues = True
     return document
 
 

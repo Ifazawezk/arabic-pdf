@@ -17,6 +17,7 @@ class Block:
     level: int = 0  # heading level, 1 is the largest
     rows: list[list[str]] = field(default_factory=list)  # table rows in reading order
     rotation: int = 0  # degrees the text is turned on the page; bbox is always in page coordinates
+    continues: bool = False  # the paragraph runs on into the first block of the next page
 
 
 @dataclass

@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license">
-  <img src="https://img.shields.io/badge/tests-233%20passing-brightgreen" alt="233 tests passing">
+  <img src="https://img.shields.io/badge/tests-242%20passing-brightgreen" alt="242 tests passing">
 </p>
 
 Turn Arabic and mixed Arabic/English PDFs into clean Unicode text, Markdown and JSON.
@@ -81,6 +81,8 @@ for page in document.pages:
 
 `page.needs_ocr` tells a scanned page apart from a blank one when OCR is off or missing. `page.unmapped_glyphs` counts glyphs the PDF gives no Unicode value for. Those appear in the text as U+FFFD, not as a guess. Tables keep reading order, so in an Arabic table the first cell of a row is the rightmost one.
 
+A paragraph cut by a page break comes out whole in text and Markdown. JSON keeps it split by page, and the part before the break has `continues` set.
+
 ### OCR setup
 
 PyMuPDF ships with Tesseract built in, so there is no program to install, only the language data:
@@ -144,6 +146,7 @@ The synthetic corpus could not have shown any of these problems:
 - The strategy document maps a lam-alef glyph to plain alef, and declares the truth in `/ActualText` on only some occurrences. arpdf learns what each glyph is from the places it is declared. Across the whole document, the word for "the students" comes out right 28 times of 28. PyMuPDF gets it right 0 times.
 - Chrome and reportlab map a mirrored bracket by its shape, Adobe tools by the character it stands for, and the file doesn't say which. arpdf tries both and keeps the reading where the brackets balance.
 - Some Arabic-Indic digits exist only in `/ActualText`, on top of a glyph mapped to a Western digit.
+- Each part of the strategy document has its own running header, so no header is on half of the pages, and 256 of 332 pages kept one in the text. A margin line that repeats on three pages close together now counts as a header too, which leaves 28. With the headers gone, 27 paragraphs cut by a page break are joined again.
 
 ## How it works
 
@@ -202,11 +205,11 @@ qalam is the closest project. If you only have digital PDFs, or you want its per
 - Tables are found from ruled lines in the PDF, so a table without lines is read as text, and tables in scans are not rebuilt. A scanned table scored about 66% CER in a side test, because Tesseract dropped most of it.
 - Headers and footers are found in the top and bottom margins. Chapter tabs on the side of a page are kept, as seen in the strategy document.
 - Arabic poetry set in two half lines may be read as two columns.
-- Paragraphs do not continue across pages, and hyphenated English words are not rejoined.
+- Hyphenated English words are not rejoined.
 - Headings come from font size. A heading that is only bold, at body size, stays a paragraph.
 - Persian and Urdu keep their letters when the page has letters specific to them, but they are not in the benchmark.
 
-Still to do: publish on PyPI, build a hold-out corpus of real PDFs with hand-checked ground truth, read tables without ruled lines, rebuild tables in scanned pages, retry OCR on regions where lines were dropped, continue paragraphs across pages, recover unmapped glyphs by matching their shapes, and run the benchmark against qalam and other extractors.
+Still to do: publish on PyPI, build a hold-out corpus of real PDFs with hand-checked ground truth, read tables without ruled lines, rebuild tables in scanned pages, retry OCR on regions where lines were dropped, recover unmapped glyphs by matching their shapes, and run the benchmark against qalam and other extractors.
 
 ## Contributing
 

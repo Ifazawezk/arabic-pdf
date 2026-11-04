@@ -23,6 +23,9 @@ HEADING_MAX_LINES = 3
 # font sizes closer than this ratio share a heading level
 SAME_LEVEL = 1.03
 SAME_SIZE = 1.1
+# a paragraph that stops at the foot of a page without one of these runs on to the next page
+SENTENCE_END = (".", "!", "?", ":", "؟", "۔", "…")
+CLOSING = "\"')]}»”’"
 
 
 def is_bold(line: Line) -> bool:
@@ -70,6 +73,22 @@ def continues(prev: Line, line: Line, step: float, widths: dict) -> bool:
     if gap <= 0 or gap > PARAGRAPH_STEP * usual:
         return False
     return filled >= SHORT_LINE
+
+
+def runs_on(lines: list[Line], following: list[Line]) -> bool:
+    """True if the last of ``lines`` is cut off mid paragraph and the first of
+    ``following``, the lines of the next page, carries on with it."""
+    if not lines or not following:
+        return False
+    prev, line = lines[-1], following[0]
+    if prev.table is not None or line.table is not None:
+        return False
+    if not _same_size(prev, line) or is_bold(prev) != is_bold(line):
+        return False
+    width = column_widths(lines).get(prev.column, 0.0)
+    if width and (prev.x1 - prev.x0) / width < SHORT_LINE:
+        return False
+    return not prev.text.rstrip().rstrip(CLOSING).endswith(SENTENCE_END)
 
 
 def group_paragraphs(lines: list[Line]) -> list[list[Line]]:
