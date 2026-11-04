@@ -57,3 +57,21 @@ def test_single_page_keeps_everything():
 def test_one_off_margin_line_is_kept():
     pages = [page("body 1", "only here"), page("body 2"), page("body 3")]
     assert texts(remove_running_text(pages, [842.0] * 3))[0] == ["only here", "body 1"]
+
+
+def test_chapter_title_in_the_header_is_removed():
+    # each chapter title is on fewer than half of the pages
+    titles = ["Chapter one"] * 4 + ["Chapter two"] * 4 + ["Chapter three"] * 4
+    pages = [page(f"body {i}", title) for i, title in enumerate(titles, start=1)]
+    assert texts(remove_running_text(pages, [842.0] * 12)) == [[f"body {i}"] for i in range(1, 13)]
+
+
+def test_chapter_title_on_odd_pages_only_is_removed():
+    pages = [page(f"body {i}", "Chapter one" if i % 2 else None) for i in range(1, 13)]
+    pages += [page(f"body {i}") for i in range(13, 31)]
+    assert texts(remove_running_text(pages, [842.0] * 30)) == [[f"body {i}"] for i in range(1, 31)]
+
+
+def test_margin_line_on_two_pages_of_many_is_kept():
+    pages = [page(f"body {i}", "Summary" if i in (3, 4) else None) for i in range(1, 11)]
+    assert texts(remove_running_text(pages, [842.0] * 10))[2] == ["Summary", "body 3"]
